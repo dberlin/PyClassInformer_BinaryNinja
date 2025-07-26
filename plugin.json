@@ -1,0 +1,22 @@
+{
+    "pluginmetadataversion": 2,
+    "name": "PyClassInformer",
+    "type": ["core", "ui", "helper"],
+    "api": ["python3"],
+    "description": "Yet Another RTTI Parser - Binary Ninja port of the IDA PyClassInformer plugin for analyzing MSVC++ RTTI structures",
+    "longdescription": "PyClassInformer analyzes MSVC++ compiled binaries to extract Run-Time Type Information (RTTI) structures, including class hierarchies, virtual function tables, and method information. This is a Binary Ninja port of the popular IDA Pro plugin.\n\nFeatures:\n- Parse RTTI structures from PE files\n- Extract class hierarchies and inheritance relationships\n- Identify virtual function tables\n- Classify methods by class\n- Support for x86, x64, ARM, and ARM64 architectures\n\nSupported platforms: Windows PE files compiled with MSVC++",
+    "license": {
+        "name": "Apache-2.0",
+        "text": "Licensed under the Apache License, Version 2.0"
+    },
+    "platforms": ["Windows", "Linux", "Darwin"],
+    "installinstructions": {
+        "Windows": "Copy the entire plugin directory to your Binary Ninja plugins folder",
+        "Linux": "Copy the entire plugin directory to your Binary Ninja plugins folder", 
+        "Darwin": "Copy the entire plugin directory to your Binary Ninja plugins folder"
+    },
+    "dependencies": {},
+    "version": "1.0.0",
+    "author": "Binary Ninja Port",
+    "minimumbinaryninjaversion": "3.0.0"
+}
