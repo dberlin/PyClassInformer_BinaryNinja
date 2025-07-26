@@ -1,43 +1,88 @@
 """
 PyClassInformer library classes checker for Binary Ninja
-Identifies known library classes and applies appropriate flags
+Identifies standard library classes (STL, MFC, etc.) - complete IDA equivalent
 """
 
-import json
 import os
-import binaryninja as bn
+import json
+import re
 from binaryninja import log_info, log_warn, log_error
 
-def set_libflag(bv, results):
-    """Set library flags for known class methods"""
-    if not results:
-        return
+class lib_classes_checker_t(object):
+    """Library classes checker - identical to IDA version"""
     
-    # Load known library classes
-    lib_classes = _load_lib_classes()
-    if not lib_classes:
-        return
+    def __init__(self, rules=None):
+        if rules is None:
+            rules = os.path.join(os.path.dirname(__file__), "lib_classes.json")
+        self.lib_class_ptns = {}
+        try:
+            with open(rules) as f:
+                self.lib_class_ptns = json.load(f)
+        except Exception as e:
+            log_error(f"Failed to load library class patterns from {rules}: {e}")
+            # Default patterns if file loading fails
+            self.lib_class_ptns = {
+                "=": [],
+                "startswith": ["std::", "boost::", "ATL::", "CWin", "CMF"],
+                "regex": []
+            }
+            
+    def does_class_startwith(self, name, ptns):
+        """Check if class name starts with any pattern"""
+        for ptn in ptns:
+            if name.startswith(ptn):
+                return True
+        return False
     
-    log_info("Applying library flags to known classes...")
+    def does_class_match_regex_ptns(self, name, ptns):
+        """Check if class name matches any regex pattern"""
+        for ptn in ptns:
+            try:
+                if re.match(ptn, name):
+                    return True
+            except re.error as e:
+                log_warn(f"Invalid regex pattern '{ptn}': {e}")
+        return False
     
-    # TODO: Implement library class detection and flagging
-    # This would involve:
-    # 1. Matching class names against known library patterns
-    # 2. Applying appropriate tags or symbols in Binary Ninja
-    # 3. Marking functions as library functions where appropriate
-    
-    log_info("Library flag application complete")
+    def is_class_lib(self, name):
+        """Check if class is a library class - identical to IDA version"""
+        if not name:
+            return False
+            
+        r = False
+        if name in self.lib_class_ptns.get("=", []):
+            r = True
+        elif self.does_class_startwith(name, self.lib_class_ptns.get("startswith", [])):
+            r = True
+        elif self.does_class_match_regex_ptns(name, self.lib_class_ptns.get("regex", [])):
+            r = True
+        return r
 
-def _load_lib_classes():
-    """Load known library classes from JSON file"""
-    try:
-        plugin_dir = os.path.dirname(os.path.dirname(__file__))
-        lib_classes_path = os.path.join(plugin_dir, "pyclassinformer", "lib_classes.json")
+def set_libflag(data):
+    """Set library flags for RTTI classes - identical to IDA version"""
+    if not data:
+        return
         
-        if os.path.exists(lib_classes_path):
-            with open(lib_classes_path, 'r') as f:
-                return json.load(f)
-    except Exception as e:
-        log_warn(f"Failed to load library classes: {e}")
+    lib_checker = lib_classes_checker_t()
     
-    return None
+    for vftable_ea in data:
+        col = data[vftable_ea]
+        
+        # get the class name that owns the vftable
+        class_name = col.name
+        if not class_name:
+            continue
+        
+        # check the class is a part of standard library classes such as STL and MFC
+        col.libflag = col.LIBNOTLIB
+        if lib_checker.is_class_lib(class_name):
+            col.libflag = col.LIBLIB
+            log_info(f"Marked {class_name} as library class")
+
+# Test functionality (commented out)
+"""
+lib_class_ptns = lib_classes_checker_t()
+print(lib_class_ptns.is_class_lib("std::exception"))  # True
+print(lib_class_ptns.is_class_lib("CWinApp"))  # True  
+print(lib_class_ptns.is_class_lib("CSimpleTextApp"))  # False
+"""

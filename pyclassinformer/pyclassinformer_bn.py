@@ -13,6 +13,7 @@ from . import pci_config_form_bn
 from . import pci_chooser_bn
 from . import method_classifier_bn
 from . import lib_classes_checker_bn
+from . import get_func_colors_bn
 
 def run_pci(bv, config=None, progress_callback=None):
     """Main entry point for PyClassInformer analysis (runs on worker thread)"""
@@ -52,17 +53,19 @@ def run_pci(bv, config=None, progress_callback=None):
                 mainthread.execute_on_main_thread(lambda: msvc_rtti_bn.rtti_parser.show(result))
             
             # Apply library flags to known classes
-            update_progress("Classifying library classes...", 80)
-            lib_classes_checker_bn.set_libflag(bv, result)
+            update_progress("Classifying library classes...", 75)
+            lib_classes_checker_bn.set_libflag(result)
+            
+            # Get function colors (for potential future UI enhancements)
+            gen_func_color, lib_func_color = get_func_colors_bn.get_gen_lib_func_colors()
+            
+            # Run method classifier (does renaming and organization)
+            update_progress("Running method classifier...", 85)
+            tree = method_classifier_bn.method_classifier(bv, result, config=analysis_config)
             
             # Show main chooser interface on main thread
-            update_progress("Generating results report...", 90)
-            pci_chooser_bn.show_pci_chooser_t(bv, result)
-            
-            # Create method classifier tree if supported
-            if analysis_config.exana:
-                update_progress("Creating method classifier...", 95)
-                tree = method_classifier_bn.method_classifier(bv, result, config=analysis_config)
+            update_progress("Generating results report...", 95)
+            mainthread.execute_on_main_thread(lambda: pci_chooser_bn.show_pci_chooser_t(bv, result))
             
         else:
             update_progress("No RTTI structures found", 100)
