@@ -61,7 +61,9 @@ class MCTreeBN:
             
             # Add constructor/destructor candidates
             refs = list(self.bv.get_code_refs(vftable_ea)) + list(self.bv.get_data_refs(vftable_ea))
-            for refea in refs:
+            for ref in refs:
+                # Extract address from reference object
+                refea = ref.address if hasattr(ref, 'address') else ref
                 func = self.bv.get_function_at(refea)
                 if func:
                     ctor_dtor_info = {
@@ -95,26 +97,143 @@ class MCTreeBN:
 <head>
     <title>PyClassInformer Class Tree</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #2E8B57; }
-        h2 { color: #4682B4; border-bottom: 2px solid #ccc; }
-        h3 { color: #8B4513; border-bottom: 1px solid #ddd; }
-        h4 { color: #2F4F4F; }
-        .class-container { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 5px; }
-        .library-class { background-color: #fff2cc; }
-        .user-class { background-color: #f0f8ff; }
-        .section { margin: 10px 0; padding: 10px; background-color: #f9f9f9; border-radius: 3px; }
-        .address { font-family: monospace; color: #0066cc; cursor: pointer; }
-        .address:hover { background-color: #e6f3ff; }
+        /* Set dark mode as default with CSS variables */
+        :root {
+            --background-color: #2b2b2b;
+            --text-color: #e8e8e8;
+            --border-color: #666;
+            --primary-color: #5fb85f;
+            --secondary-color: #6db3f2;
+            --tertiary-color: #d2b48c;
+            --quaternary-color: #90ee90;
+            --container-background: #3a3a3a;
+            --lib-class-background: #5a5a00;
+            --user-class-background: #3a4a5a;
+            --section-background: #404040;
+            --accent-color: #66b3ff;
+            --hover-background: #3a4a5a;
+            --method-background: #383838;
+            --hierarchy-background: #384038;
+            --hierarchy-border: #4CAF50;
+            --muted-color: #bbb;
+            --summary-background: #3a4a5a;
+            --collapsible-background: #4a4a4a;
+            --collapsible-hover: #5a5a5a;
+            --content-background: #353535;
+            --vftable-background: #5a3a3a;
+        }
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        h1 { color: var(--primary-color); }
+        h2 { 
+            color: var(--secondary-color); 
+            border-bottom: 2px solid var(--border-color); 
+        }
+        h3 { 
+            color: var(--tertiary-color); 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        h4 { color: var(--quaternary-color); }
+        .class-container { 
+            border: 1px solid var(--border-color); 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 5px; 
+            background-color: var(--container-background);
+        }
+        .library-class { background-color: var(--lib-class-background); }
+        .user-class { background-color: var(--user-class-background); }
+        .section { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background-color: var(--section-background); 
+            border-radius: 3px; 
+        }
+        .address { 
+            font-family: monospace; 
+            color: var(--accent-color); 
+            cursor: pointer; 
+        }
+        .address:hover { background-color: var(--hover-background); }
         .method-list { list-style-type: none; padding-left: 20px; }
-        .method-item { margin: 5px 0; padding: 5px; background-color: white; border-radius: 3px; }
-        .hierarchy-path { margin: 5px 0; padding: 5px; background-color: #e6ffe6; border-left: 3px solid #4CAF50; }
-        .inheritance-info { font-size: 0.9em; color: #666; font-style: italic; }
-        .summary { background-color: #e6f3ff; padding: 15px; border-radius: 5px; margin: 10px 0; }
-        .collapsible { cursor: pointer; padding: 10px; background-color: #f1f1f1; border: none; width: 100%; text-align: left; }
-        .collapsible:hover { background-color: #ddd; }
-        .content { display: none; padding: 10px; border: 1px solid #ddd; }
-        .vftable-info { background-color: #ffe6e6; padding: 5px; margin: 5px 0; border-radius: 3px; }
+        .method-item { 
+            margin: 5px 0; 
+            padding: 5px; 
+            background-color: var(--method-background); 
+            border-radius: 3px; 
+        }
+        .hierarchy-path { 
+            margin: 5px 0; 
+            padding: 5px; 
+            background-color: var(--hierarchy-background); 
+            border-left: 3px solid var(--hierarchy-border); 
+        }
+        .inheritance-info { 
+            font-size: 0.9em; 
+            color: var(--muted-color); 
+            font-style: italic; 
+        }
+        .summary { 
+            background-color: var(--summary-background); 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+        }
+        .collapsible { 
+            cursor: pointer; 
+            padding: 10px; 
+            background-color: var(--collapsible-background); 
+            border: none; 
+            width: 100%; 
+            text-align: left;
+            color: var(--text-color);
+        }
+        .collapsible:hover { background-color: var(--collapsible-hover); }
+        .content { 
+            display: none; 
+            padding: 10px; 
+            border: 1px solid var(--border-color); 
+            background-color: var(--content-background);
+        }
+        .vftable-info { 
+            background-color: var(--vftable-background); 
+            padding: 5px; 
+            margin: 5px 0; 
+            border-radius: 3px; 
+        }
+        
+        /* Light mode with softer backgrounds */
+        @media (prefers-color-scheme: light) {
+            :root {
+                --background-color: #f8f8f8;
+                --text-color: #000000;
+                --border-color: #ccc;
+                --primary-color: #2E8B57;
+                --secondary-color: #4682B4;
+                --tertiary-color: #8B4513;
+                --quaternary-color: #2F4F4F;
+                --container-background: #fafafa;
+                --lib-class-background: #fff8e1;
+                --user-class-background: #f0f8ff;
+                --section-background: #f5f5f5;
+                --accent-color: #0066cc;
+                --hover-background: #e6f3ff;
+                --method-background: #f9f9f9;
+                --hierarchy-background: #f0fff0;
+                --hierarchy-border: #4CAF50;
+                --muted-color: #666;
+                --summary-background: #f0f8ff;
+                --collapsible-background: #f0f0f0;
+                --collapsible-hover: #e8e8e8;
+                --content-background: #fafafa;
+                --vftable-background: #fff5f5;
+            }
+        }
     </style>
     <script>
         function toggleSection(element) {

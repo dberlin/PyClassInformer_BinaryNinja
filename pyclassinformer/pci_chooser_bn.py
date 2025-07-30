@@ -23,18 +23,69 @@ class PCIChooserBN:
 <head>
     <title>PyClassInformer Results</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { color: #2E8B57; }
-        h2 { color: #4682B4; border-bottom: 1px solid #ccc; }
-        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .vftable { font-family: monospace; color: #0066cc; }
-        .classname { font-weight: bold; color: #cc6600; }
-        .hierarchy { font-style: italic; color: #666; }
-        .libflag { background-color: #fff2cc; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary { background-color: #e6f3ff; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        /* Dark mode as default (direct colors for compatibility) */
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #2b2b2b;
+            color: #e8e8e8;
+        }
+        h1 { color: #5fb85f; }
+        h2 { 
+            color: #6db3f2; 
+            border-bottom: 1px solid #666; 
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 10px 0;
+            background-color: #3a3a3a;
+        }
+        th, td { 
+            border: 1px solid #666; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        th { background-color: #4a4a4a; }
+        .vftable { font-family: monospace; color: #66b3ff; }
+        .classname { font-weight: bold; color: #ffaa66; }
+        .hierarchy { font-style: italic; color: #bbb; }
+        .libflag { background-color: #5a5a00; }
+        tr:nth-child(even) { background-color: #353535; }
+        .summary { 
+            background-color: #3a4a5a; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+        }
+        
+        /* Light mode with softer backgrounds */
+        @media (prefers-color-scheme: light) {
+            body { 
+                background-color: #f8f8f8;
+                color: #000000;
+            }
+            h1 { color: #2E8B57; }
+            h2 { 
+                color: #4682B4; 
+                border-bottom: 1px solid #ddd; 
+            }
+            table { 
+                background-color: #fafafa;
+            }
+            th, td { 
+                border: 1px solid #ddd; 
+            }
+            th { background-color: #f0f0f0; }
+            .vftable { color: #0066cc; }
+            .classname { color: #cc6600; }
+            .hierarchy { color: #666; }
+            .libflag { background-color: #fff8e1; }
+            tr:nth-child(even) { background-color: #f5f5f5; }
+            .summary { 
+                background-color: #f0f8ff; 
+            }
+        }
     </style>
 </head>
 <body>
@@ -119,7 +170,7 @@ class PCIChooserBN:
         <li><strong>Hierarchy:</strong> Inheritance relationships</li>
         <li><strong>Offset:</strong> Virtual table offset within the class</li>
         <li><strong>Library:</strong> Whether this appears to be a library class</li>
-        <li><span style="background-color: #fff2cc; padding: 2px;">Highlighted rows</span> indicate library classes</li>
+        <li><span class="libflag" style="padding: 2px;">Highlighted rows</span> indicate library classes</li>
     </ul>
     
 </body>
