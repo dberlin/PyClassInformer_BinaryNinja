@@ -7,6 +7,7 @@ import binaryninja as bn
 from binaryninja import log_info, log_warn, log_error
 from . import pci_utils_bn
 from . import pci_config
+from . import mc_tree_bn
 
 def rename_func(bv, ea, prefix="", fn="", is_lib=False):
     """Rename function - Binary Ninja equivalent of IDA version"""
@@ -175,7 +176,9 @@ def get_col_offs_by_cols(cols, u):
     return col_offs
 
 def organize_functions_by_class(bv, paths, data):
-    """Organize functions by class using Binary Ninja tags"""
+    """Organize functions by class using Binary Ninja tags - enhanced version"""
+    u = pci_utils_bn.utils(bv)
+    
     for vftable_ea in paths:
         path = paths[vftable_ea]
         if not path:
@@ -185,27 +188,66 @@ def organize_functions_by_class(bv, paths, data):
         # get the class name that owns the vftable
         class_name = path[-1].name
         
-        # Tag virtual functions
-        for vfea in col.vfeas:
+        # Determine if this is a library class
+        is_lib = getattr(col, 'libflag', False) == col.LIBLIB if hasattr(col, 'LIBLIB') else False
+        class_category = "LibraryClass" if is_lib else "UserClass"
+        
+        # Tag the vftable itself
+        try:
+            bv.add_tag(vftable_ea, "VFTable", f"Virtual function table for {class_name}")
+            bv.add_tag(vftable_ea, class_category, class_name)
+            # Also add hierarchy info
+            if len(path) > 1:
+                hierarchy_info = " -> ".join([bcd.name for bcd in reversed(path)])
+                bv.add_tag(vftable_ea, "ClassHierarchy", hierarchy_info)
+        except Exception as e:
+            log_warn(f"Failed to add VFTable tags at 0x{vftable_ea:x}: {e}")
+        
+        # Tag virtual functions with enhanced information
+        for i, vfea in enumerate(col.vfeas):
             func = bv.get_function_at(vfea)
             if func:
                 try:
+                    # Primary tags
                     func.add_tag("VirtualMethod", f"Virtual method of {class_name}")
+                    func.add_tag(class_category, class_name)
                     bv.add_tag(vfea, "VirtualMethod", f"Virtual method of {class_name}")
+                    bv.add_tag(vfea, class_category, class_name)
+                    
+                    # Method index tag for ordering
+                    func.add_tag("MethodIndex", f"Virtual method #{i} in {class_name}")
+                    
+                    # Inheritance hierarchy tag
+                    if len(path) > 1:
+                        hierarchy_info = " -> ".join([bcd.name for bcd in reversed(path)])
+                        func.add_tag("ClassHierarchy", hierarchy_info)
+                        bv.add_tag(vfea, "ClassHierarchy", hierarchy_info)
+                        
                 except Exception as e:
-                    log_warn(f"Failed to add virtual method tag at 0x{vfea:x}: {e}")
+                    log_warn(f"Failed to add virtual method tags at 0x{vfea:x}: {e}")
         
-        # Tag constructor/destructor functions
-        u = pci_utils_bn.utils(bv)
+        # Tag constructor/destructor functions with enhanced information
         refs = u.get_xrefs_to(vftable_ea)
         for refea in refs:
             func = bv.get_function_at(refea)
             if func:
                 try:
+                    # Primary tags
                     func.add_tag("Constructor/Destructor", f"Possible ctor/dtor of {class_name}")
+                    func.add_tag(class_category, class_name)
                     bv.add_tag(refea, "Constructor/Destructor", f"Possible ctor/dtor of {class_name}")
+                    bv.add_tag(refea, class_category, class_name)
+                    
+                    # Inheritance hierarchy tag
+                    if len(path) > 1:
+                        hierarchy_info = " -> ".join([bcd.name for bcd in reversed(path)])
+                        func.add_tag("ClassHierarchy", hierarchy_info)
+                        bv.add_tag(refea, "ClassHierarchy", hierarchy_info)
+                        
                 except Exception as e:
-                    log_warn(f"Failed to add ctor/dtor tag at 0x{refea:x}: {e}")
+                    log_warn(f"Failed to add ctor/dtor tags at 0x{refea:x}: {e}")
+    
+    log_info(f"Enhanced symbol grouping applied to {len(paths)} classes with comprehensive tags")
 
 def method_classifier(bv, data, config=None):
     """Main method classifier - complete IDA equivalent functionality"""
@@ -239,7 +281,13 @@ def method_classifier(bv, data, config=None):
         log_info("Organizing functions by class using tags...")
         organize_functions_by_class(bv, paths, data)
     
+    # display tree view (equivalent to IDA's tree display)
+    tree = None
+    if config.exana:
+        log_info("Generating class tree view...")
+        tree = mc_tree_bn.show_mc_tree_bn(bv, data, paths)
+    
     log_info("Method classification complete")
     
-    # Return paths for potential UI display (equivalent to returning tree in IDA)
-    return paths
+    # Return tree for potential further operations (equivalent to returning tree in IDA)
+    return tree

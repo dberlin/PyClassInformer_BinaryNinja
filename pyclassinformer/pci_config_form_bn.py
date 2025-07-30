@@ -42,13 +42,14 @@ class PCIConfigFormBN:
         options_text = """Select analysis options (enter comma-separated numbers):
 
 1. Display RTTI parsed results in the log
-2. Display extra analysis results  
-3. Create folders for classes and move virtual methods
-4. Move functions that reference vftables to class folders
-5. Rename virtual methods
+2. Display extra analysis results (class tree view + comprehensive tagging)
+3. Apply comprehensive symbol grouping tags for virtual methods
+4. Apply comprehensive symbol grouping tags for constructors/destructors  
+5. Rename virtual methods with class prefixes
 6. Rename possible constructors and destructors
 
-Example: 1,2,5,6 (or just press Enter for all options)"""
+Example: 1,2,5,6 (or just press Enter for all options)
+Note: Option 2 enables the interactive class tree view like IDA's dirtree organization"""
         
         user_input = get_text_line_input(
             options_text,
@@ -101,10 +102,10 @@ Search Area: {'All data sections' if alldata else 'Only .rdata section'}
 
 Analysis Options:
 {'✓' if rtti else '✗'} Display RTTI parsed results
-{'✓' if exana else '✗'} Display extra analysis results
-{'✓' if mvvm else '✗'} Create class folders and move virtual methods
-{'✓' if mvcd else '✗'} Move vftable functions to class folders
-{'✓' if rnvm else '✗'} Rename virtual methods
+{'✓' if exana else '✗'} Display class tree view + comprehensive tagging
+{'✓' if mvvm else '✗'} Apply symbol grouping tags for virtual methods
+{'✓' if mvcd else '✗'} Apply symbol grouping tags for constructors/destructors
+{'✓' if rnvm else '✗'} Rename virtual methods with class prefixes
 {'✓' if rncd else '✗'} Rename constructors and destructors
 
 Proceed with analysis?"""
@@ -131,7 +132,7 @@ def show_simple_config_form():
     """Simplified configuration form with fewer options"""
     choices = [
         "Quick Analysis (RTTI display + renaming)",
-        "Full Analysis (all options enabled)",
+        "Full Analysis (tree view + all options enabled)",
         "Custom Configuration"
     ]
     
