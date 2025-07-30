@@ -6,6 +6,7 @@ Main module for RTTI parsing and analysis
 import binaryninja as bn
 from binaryninja import log_info, log_warn, log_error
 from binaryninja import mainthread
+from binaryninja.interaction import show_report_collection, ReportCollection, HTMLReport
 
 from . import msvc_rtti_bn
 from . import pci_config
@@ -14,6 +15,43 @@ from . import pci_chooser_bn
 from . import method_classifier_bn
 from . import lib_classes_checker_bn
 from . import get_func_colors_bn
+from . import mc_tree_bn
+
+def _show_results_collection(bv, result, tree, config):
+    """Show results collection with multiple reports"""
+    collection = ReportCollection()
+    
+    # Add RTTI results report if enabled
+    if config.rtti and result:
+        chooser = pci_chooser_bn.PCIChooserBN(bv, result)
+        rtti_html = chooser.generate_html_report()
+        rtti_report = HTMLReport("RTTI Analysis Results", rtti_html)
+        collection.append(rtti_report)
+    log_info(f"Exana config is {config.exana}, result is {result}") 
+    # Add tree view report if enabled and available
+    if config.exana and result:
+        # Create tree and get its HTML content
+        from . import method_classifier_bn
+        paths = method_classifier_bn.get_base_classes(bv, result)
+        tree_obj = mc_tree_bn.MCTreeBN(bv, result, paths)
+        tree_obj.process_data()
+        tree_obj.apply_symbol_grouping_tags()
+        tree_html = tree_obj.generate_html_tree_report()
+        tree_report = HTMLReport("Class Tree View", tree_html)
+        collection.append(tree_report)
+        
+        # Log summary for tree view
+        log_info(f"PyClassInformer Class Tree: {len(tree_obj.class_structure)} classes organized")
+        log_info("Symbol grouping tags applied - use Binary Ninja's tag filters to navigate")
+    
+    # Show all reports together
+    if len(collection) > 0:
+        show_report_collection("PyClassInformer Results", collection)
+        log_info(f"PyClassInformer found {len(result)} classes with RTTI information")
+        if len(collection) > 1:
+            log_info(f"Displaying {len(collection)} reports in collection view")
+    else:
+        log_info("No reports to display based on current configuration")
 
 def run_pci(bv, config=None, progress_callback=None):
     """Main entry point for PyClassInformer analysis (runs on worker thread)"""
@@ -59,13 +97,13 @@ def run_pci(bv, config=None, progress_callback=None):
             # Get function colors (for potential future UI enhancements)
             gen_func_color, lib_func_color = get_func_colors_bn.get_gen_lib_func_colors()
             
-            # Run method classifier (does renaming and organization)
+            # Run method classifier (does renaming and organization) 
             update_progress("Running method classifier...", 85)
             tree = method_classifier_bn.method_classifier(bv, result, config=analysis_config)
             
-            # Show main chooser interface on main thread
-            update_progress("Generating results report...", 95)
-            mainthread.execute_on_main_thread(lambda: pci_chooser_bn.show_pci_chooser_t(bv, result))
+            # Collect and show reports based on configuration
+            update_progress("Generating reports...", 95)
+            mainthread.execute_on_main_thread(lambda: _show_results_collection(bv, result, tree, analysis_config))
             
         else:
             update_progress("No RTTI structures found", 100)

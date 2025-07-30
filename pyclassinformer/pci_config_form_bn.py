@@ -60,6 +60,10 @@ Note: Option 2 enables the interactive class tree view like IDA's dirtree organi
             self.cancelled = True
             return None
         
+        # Decode bytes to string if necessary
+        if isinstance(user_input, bytes):
+            user_input = user_input.decode('utf-8')
+        
         # Parse user input or use defaults
         if user_input.strip() == "":
             # Default: all options enabled

@@ -281,11 +281,14 @@ def method_classifier(bv, data, config=None):
         log_info("Organizing functions by class using tags...")
         organize_functions_by_class(bv, paths, data)
     
-    # display tree view (equivalent to IDA's tree display)
+    # prepare tree view data (equivalent to IDA's tree display)
+    # Note: Display is now handled by _show_results_collection to support multiple reports
     tree = None
     if config.exana:
-        log_info("Generating class tree view...")
-        tree = mc_tree_bn.show_mc_tree_bn(bv, data, paths)
+        log_info("Preparing class tree view data...")
+        # Don't show the tree here, just prepare the data structure
+        # The display will be handled by the main results collection
+        tree = {'base_class_paths': paths, 'data': data}
     
     log_info("Method classification complete")
     

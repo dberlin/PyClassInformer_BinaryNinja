@@ -25,13 +25,22 @@ class pci_config(object):
         self.check_dirtree()
         
     def check_dirtree(self):
+        # Check if we're running in Binary Ninja or IDA
         try:
-            import ida_dirtree
-            ida_dirtree.dirtree_t.find_entry
-        # for IDA 7.x
-        except (ModuleNotFoundError, AttributeError) as e:
-            self.exana = False
-            self.mvvm = False
-            self.mvcd = False
-            self.dirtree = False
+            import binaryninja
+            # Running in Binary Ninja - we have our own tree implementation
+            self.dirtree = True  # We support tree view via Binary Ninja tags
+            # Keep other options as they were set in __init__
+        except ImportError:
+            # Running in IDA - check for ida_dirtree
+            try:
+                import ida_dirtree
+                ida_dirtree.dirtree_t.find_entry
+                self.dirtree = True
+            # for IDA 7.x
+            except (ModuleNotFoundError, AttributeError) as e:
+                self.exana = False
+                self.mvvm = False
+                self.mvcd = False
+                self.dirtree = False
             
