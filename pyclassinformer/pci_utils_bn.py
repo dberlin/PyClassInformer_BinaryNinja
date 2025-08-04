@@ -193,8 +193,8 @@ class utils(object):
     
     def get_xrefs_to(self, addr):
         """Get cross-references to an address"""
-        code_refs = list(self.bv.get_code_refs(addr))
-        data_refs = list(self.bv.get_data_refs(addr))
+        code_refs = [ref.address for ref in self.bv.get_code_refs(addr)]
+        data_refs = [ref.address for ref in self.bv.get_data_refs(addr)]
         return code_refs + data_refs
     
     def get_name(self, addr):
@@ -266,16 +266,15 @@ class utils(object):
         return results
     
     def create_struct_type(self, name, members):
-        """Create a structure type"""
+        """Create a structure type using StructureBuilder"""
         try:
-            struct_type = bn.Structure()
-            struct_type.packed = True
+            builder = bn.StructureBuilder.create()
+            builder.packed = True
             
-            offset = 0
             for member_name, member_type, member_size in members:
-                struct_type.append(bn.StructureMember(member_type, member_name, offset))
-                offset += member_size
+                builder.append(member_type, member_name)
             
+            struct_type = Type.structure_type(builder)
             self.bv.define_user_type(name, struct_type)
             return struct_type
         except:
