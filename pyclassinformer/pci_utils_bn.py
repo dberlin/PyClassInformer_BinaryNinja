@@ -193,8 +193,9 @@ class utils(object):
     
     def get_xrefs_to(self, addr):
         """Get cross-references to an address"""
+        # code refs are reference sources, data refs are addresses
         code_refs = [ref.address for ref in self.bv.get_code_refs(addr)]
-        data_refs = [ref.address for ref in self.bv.get_data_refs(addr)]
+        data_refs = [address for address in self.bv.get_data_refs(addr)]
         return code_refs + data_refs
     
     def get_name(self, addr):

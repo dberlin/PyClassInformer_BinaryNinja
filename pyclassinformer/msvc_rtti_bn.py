@@ -41,6 +41,7 @@ class RTTITypeDescriptor(RTTIStruc):
             
         self.class_name = None
         self.ea = ea
+        self.type_name = None
         
         # Calculate name address
         name_offset = u.PTR_SIZE * 2  # pVFTable + spare
@@ -126,9 +127,10 @@ class RTTITypeDescriptor(RTTIStruc):
             ("name", bn.Type.array(bn.Type.char(), self.size - u.PTR_SIZE * 2), self.size - u.PTR_SIZE * 2)
         ]
         
-        struct_type = u.create_struct_type(f"RTTITypeDescriptor_{self.ea:x}", members)
+        self.type_name = f"RTTITypeDescriptor_{self.ea:x}"
+        struct_type = u.create_struct_type(self.type_name, members)
         if struct_type:
-            u.apply_struct_type(self.ea, f"RTTITypeDescriptor_{self.ea:x}")
+            u.apply_struct_type(self.ea, self.type_name)
 
 class RTTIClassHierarchyDescriptor(RTTIStruc):
     """RTTI Class Hierarchy Descriptor - identical to IDA version"""
@@ -150,6 +152,7 @@ class RTTIClassHierarchyDescriptor(RTTIStruc):
         self.nb_classes = 0
         self.flags = ""
         self.bca = None
+        self.type_name = None
         
         # Read structure data
         data = u.bv.read(ea, self.size)
@@ -193,9 +196,10 @@ class RTTIClassHierarchyDescriptor(RTTIStruc):
             ("pBaseClassArray", bn.Type.int(4), 4)
         ]
         
-        struct_type = u.create_struct_type(f"RTTIClassHierarchyDescriptor_{self.ea:x}", members)
+        self.type_name = f"RTTIClassHierarchyDescriptor_{self.ea:x}"
+        struct_type = u.create_struct_type(self.type_name, members)
         if struct_type:
-            u.apply_struct_type(self.ea, f"RTTIClassHierarchyDescriptor_{self.ea:x}")
+            u.apply_struct_type(self.ea, self.type_name)
 
 class RTTIBaseClassDescriptor(RTTIStruc):
     """RTTI Base Class Descriptor - identical to IDA version"""
@@ -223,6 +227,7 @@ class RTTIBaseClassDescriptor(RTTIStruc):
         self.depth = 0
         self.nb_cbs = 0
         self.mdisp = 0
+        self.type_name = None
         self.pdisp = 0
         self.vdisp = 0
         self.attributes = 0
@@ -290,9 +295,10 @@ class RTTIBaseClassDescriptor(RTTIStruc):
         if self.attributes & self.BCD_HASPCHD:
             members.append(("pClassDescriptor", bn.Type.int(4), 4))
         
-        struct_type = u.create_struct_type(f"RTTIBaseClassDescriptor_{self.ea:x}", members)
+        self.type_name = f"RTTIBaseClassDescriptor_{self.ea:x}"
+        struct_type = u.create_struct_type(self.type_name, members)
         if struct_type:
-            u.apply_struct_type(self.ea, f"RTTIBaseClassDescriptor_{self.ea:x}")
+            u.apply_struct_type(self.ea, self.type_name)
 
 class RTTIBaseClassArray(RTTIStruc):
     """RTTI Base Class Array - identical to IDA version"""
@@ -307,6 +313,7 @@ class RTTIBaseClassArray(RTTIStruc):
         self.size = nb_classes * 4  # Array of 32-bit RVAs
         self.bases = []
         self.paths = {}
+        self.type_name = None
         
         if nb_classes <= 0 or nb_classes > 100:  # Sanity check like IDA
             return
@@ -337,11 +344,11 @@ class RTTIBaseClassArray(RTTIStruc):
     def _create_struct_type(self):
         """Create RTTIBaseClassArray structure type"""
         array_type = bn.Type.array(bn.Type.int(4), self.nb_classes)
-        type_name = f"RTTIBaseClassArray_{self.ea:x}"
+        self.type_name = f"RTTIBaseClassArray_{self.ea:x}"
         
         try:
-            u.bv.define_user_type(type_name, array_type)
-            u.bv.define_user_data_var(self.ea, bn.Type.named_type_from_type(type_name, array_type))
+            u.bv.define_user_type(self.type_name, array_type)
+            u.bv.define_user_data_var(self.ea, bn.Type.named_type_from_type(self.type_name, array_type))
         except:
             pass
     
@@ -537,6 +544,7 @@ class RTTICompleteObjectLocator(RTTIStruc):
         self.vfeas = []
         self.libflag = self.LIBUNK
         self.selfea = 0
+        self.type_name = None
         
         # Adjust size for x64 like IDA
         if u.x64:
@@ -604,9 +612,10 @@ class RTTICompleteObjectLocator(RTTIStruc):
         if u.x64:
             members.append(("pSelf", bn.Type.int(4), 4))
         
-        struct_type = u.create_struct_type(f"RTTICompleteObjectLocator_{self.ea:x}", members)
+        self.type_name = f"RTTICompleteObjectLocator_{self.ea:x}"
+        struct_type = u.create_struct_type(self.type_name, members)
         if struct_type:
-            u.apply_struct_type(self.ea, f"RTTICompleteObjectLocator_{self.ea:x}")
+            u.apply_struct_type(self.ea, self.type_name)
 
 class rtti_parser(object):
     """Main RTTI parser - identical to IDA version functionality"""

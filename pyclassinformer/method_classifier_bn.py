@@ -153,15 +153,23 @@ def get_col_offs(col, vftables, u):
 def get_cols_by_col(col, vftables, u):
     """Get COLs by COL - Binary Ninja equivalent of IDA utils.get_cols_by_col"""
     # get offsets in COLs by finding xrefs for multiple inheritance
-    x = set([xrea for xrea in u.get_xrefs_to(col.tdea)])
-    # Note: In the IDA version, there's also col.tid, but that doesn't exist in our implementation
-    # We'll just use tdea for now
-    y = set([xrea for xrea in u.get_xrefs_to(col.tdea)])
+    refs_to_td = set([xrea for xrea in u.get_xrefs_to(col.tdea)])
+    
+    # Use type-based references if type_name is available
+    refs_to_type = set()
+    if hasattr(col.td, 'type_name') and col.td.type_name:
+        # Get references to the type structure
+        # Data refs are addresses, code refs are reference sources
+        data_refs = u.bv.get_data_refs_for_type(col.td.type_name)
+        code_refs = u.bv.get_code_refs_for_type(col.td.type_name)
+        refs_to_type = set([address for address in data_refs] + [ref.address for ref in code_refs])
+    
+    # Combine traditional address references with type-based references
+    all_refs = refs_to_td | refs_to_type
     
     # If the target is a multi inheritance class, TD has multiple xrefs from multiple COLs
     # Here, get the COLs
-    coleas = (x & y)
-    cols = sorted([col for vtable_ea, col in vftables.items() if col.ea in coleas], key=lambda x: x.ea)
+    cols = sorted([col for vtable_ea, col in vftables.items() if col.ea in all_refs], key=lambda x: x.ea)
     return cols
 
 def get_col_offs_by_cols(cols, u):
