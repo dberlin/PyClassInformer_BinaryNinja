@@ -76,37 +76,37 @@ class RTTITypeDescriptor(RTTIStruc):
             return None
             
         try:
-            log_info(f"Attempting to demangle: '{mangled}'")
+            log_debug(f"Attempting to demangle: '{mangled}'")
             
             # Get the architecture for demangling
             arch = u.bv.arch
             
             # The mangled name is already a type descriptor name, try it directly first
             demangled_types = bn.demangle_ms(arch, mangled)
-            log_info(f"Direct demangling result: {demangled_types}")
+            log_debug(f"Direct demangling result: {demangled_types}")
             if demangled_types and len(demangled_types) > 0:
                 result = str(demangled_types[0])
-                log_info(f"Direct demangling succeeded: '{result}'")
+                log_debug(f"Direct demangling succeeded: '{result}'")
                 return result
             
             # Try constructing full RTTI type descriptor symbol like IDA version
             full_symbol = '??_R0' + mangled[1:]
-            log_info(f"Trying full RTTI symbol: '{full_symbol}'")
+            log_debug(f"Trying full RTTI symbol: '{full_symbol}'")
             demangled_types = bn.demangle_ms(arch, full_symbol)
-            log_info(f"Full symbol demangling result: {demangled_types}")
+            log_debug(f"Full symbol demangling result: {demangled_types}")
             if demangled_types and len(demangled_types) > 0:
                 result = str(demangled_types[0])
-                log_info(f"Full symbol demangling succeeded: '{result}'")
+                log_debug(f"Full symbol demangling succeeded: '{result}'")
                 return result
             
             # Try without the leading dot
             no_dot = mangled[1:]
-            log_info(f"Trying without dot: '{no_dot}'")
+            log_debug(f"Trying without dot: '{no_dot}'")
             demangled_types = bn.demangle_ms(arch, no_dot)
-            log_info(f"No dot demangling result: {demangled_types}")
+            log_debug(f"No dot demangling result: {demangled_types}")
             if demangled_types and len(demangled_types) > 0:
                 result = str(demangled_types[0])
-                log_info(f"No dot demangling succeeded: '{result}'")
+                log_debug(f"No dot demangling succeeded: '{result}'")
                 return result
                 
         except Exception as e:
