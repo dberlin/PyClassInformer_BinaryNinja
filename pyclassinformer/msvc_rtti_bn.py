@@ -636,7 +636,7 @@ class rtti_parser(object):
             colea = u.get_ptr(vtable - u.PTR_SIZE)
             
             # Check if the COL address is within valid ranges (where COLs would be stored)
-            if u.within(colea, u.valid_ranges):
+            if u.within(colea):
                 potential_cols += 1
                 
                 # Verify vtable address is within range and looks like a vtable
@@ -657,13 +657,21 @@ class rtti_parser(object):
         
         log_info(f"Scanned {addresses_checked} addresses, found {potential_cols} potential COLs, {valid_rtti_found} valid RTTI structures")
         
+        # Create lookup table for O(1) _get_col_offs - fixes O(N²) complexity
+        td_chd_lookup = {}
+        for vtable, col in result.items():
+            key = (col.tdea, col.chdea)
+            if key not in td_chd_lookup:
+                td_chd_lookup[key] = []
+            td_chd_lookup[key].append(col)
+        
         # Parse BCA for hierarchy like IDA version
         prev_col = None
         vi_offs = {}
         
         for vtable in result:
             col = result[vtable]
-            col_offs = rtti_parser._get_col_offs(col, result)
+            col_offs = rtti_parser._get_col_offs_optimized(col, td_chd_lookup)
             
             if prev_col and prev_col.name != col.name:
                 vi_offs = {}
@@ -697,7 +705,7 @@ class rtti_parser(object):
         if not u.is_executable(function_ptr):
             # Try to be more lenient - sometimes function pointers might not be marked as executable yet
             # Check if it's at least in a valid memory range
-            if not u.within(function_ptr, u.valid_ranges):
+            if not u.within(function_ptr):
                 return False
         
         # Check if vtable has cross-references (like IDA)
@@ -723,6 +731,20 @@ class rtti_parser(object):
             other_col = result[vtable]
             if (other_col.tdea == col.tdea and other_col.chdea == col.chdea):
                 cols.append(other_col)
+        
+        # Get the offsets from all related COLs
+        col_offs = [c.offset for c in cols]
+        return sorted(col_offs)
+    
+    @staticmethod 
+    def _get_col_offs_optimized(col, td_chd_lookup):
+        """Optimized COL offsets lookup - O(1) complexity using pre-built lookup table"""
+        if not col:
+            return []
+        
+        # Use pre-built lookup table for O(1) access
+        key = (col.tdea, col.chdea)
+        cols = td_chd_lookup.get(key, [col])
         
         # Get the offsets from all related COLs
         col_offs = [c.offset for c in cols]

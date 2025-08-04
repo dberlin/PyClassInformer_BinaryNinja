@@ -4,6 +4,7 @@ Provides Binary Ninja equivalents for IDA utility functions
 """
 
 import struct
+import bisect
 import binaryninja as bn
 from binaryninja import log_info, log_warn, log_error, log_debug
 
@@ -16,6 +17,8 @@ class utils(object):
         self.data = 0
         self.rdata = 0
         self.valid_ranges = []
+        self._sorted_ranges = []  # Optimized sorted ranges for binary search
+        self._range_starts = []   # Pre-computed start addresses for binary search
         
         # Architecture-specific settings
         self.x64 = bv.arch.name in ['x86_64', 'aarch64']
@@ -23,6 +26,9 @@ class utils(object):
         
         # Initialize section information
         self._init_sections()
+        
+        # Optimize ranges for fast lookups
+        self._optimize_ranges()
         
     def _init_sections(self):
         """Initialize section information"""
@@ -49,11 +55,44 @@ class utils(object):
                                                bn.SectionSemantics.ReadWriteDataSectionSemantics]:
                 self.valid_ranges.append((section.start, section.end))
     
+    def _optimize_ranges(self):
+        """Optimize ranges for fast binary search lookups"""
+        if not self.valid_ranges:
+            return
+        
+        # Sort ranges by start address and merge overlapping ranges
+        sorted_ranges = sorted(self.valid_ranges, key=lambda r: r[0])
+        merged = [sorted_ranges[0]]
+        
+        for current in sorted_ranges[1:]:
+            last = merged[-1]
+            # If ranges overlap or are adjacent, merge them
+            if current[0] <= last[1] + 1:
+                merged[-1] = (last[0], max(last[1], current[1]))
+            else:
+                merged.append(current)
+        
+        self._sorted_ranges = merged
+        self._range_starts = [r[0] for r in merged]  # Pre-compute for faster binary search
+    
     def within(self, x, rl=None):
-        """Check if address is within valid ranges"""
+        """Check if address is within valid ranges - optimized with binary search"""
         if rl is None:
-            rl = self.valid_ranges
-        return any(r[0] <= x <= r[1] for r in rl)
+            # Use optimized sorted ranges for binary search - O(log n) instead of O(n)
+            if not self._sorted_ranges:
+                return False
+            
+            # Binary search for the range that could contain x
+            # Find the rightmost range with start <= x
+            idx = bisect.bisect_right(self._range_starts, x) - 1
+            
+            # Check if x falls within that range
+            if idx >= 0 and idx < len(self._sorted_ranges):
+                return self._sorted_ranges[idx][0] <= x <= self._sorted_ranges[idx][1]
+            return False
+        else:
+            # Fallback to original method for custom ranges
+            return any(r[0] <= x <= r[1] for r in rl)
     
     def get_imagebase(self):
         """Get image base address"""
