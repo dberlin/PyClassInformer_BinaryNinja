@@ -621,38 +621,41 @@ class rtti_parser(object):
         data_size = end - start
         log_info(f"Parsing RTTI from 0x{start:x} to 0x{end:x} (size: {data_size} bytes)")
         
-        # Get COLs with CHDs and TDs exactly like IDA
+        # Get COLs with CHDs and TDs - improved approach
         result = {}
-        vtables_checked = 0
-        potential_vtables = 0
+        addresses_checked = 0
+        potential_cols = 0
+        valid_rtti_found = 0
         
-        # Scan for vtables like IDA version
+        # Scan for potential COL pointers within valid ranges first
         for offset in range(0, data_size - u.PTR_SIZE, u.PTR_SIZE):
             vtable = start + offset
-            vtables_checked += 1
+            addresses_checked += 1
             
-            if rtti_parser._is_vtable(vtable):
-                potential_vtables += 1
-                if potential_vtables <= 3:  # Only log first 3 to avoid spam
-                    log_info(f"Found potential vtable at 0x{vtable:x}")
+            # Read the potential COL address (pointer at vtable - PTR_SIZE)
+            colea = u.get_ptr(vtable - u.PTR_SIZE)
+            
+            # Check if the COL address is within valid ranges (where COLs would be stored)
+            if u.within(colea, u.valid_ranges):
+                potential_cols += 1
                 
-                # Get COL address (typically at vtable - PTR_SIZE)
-                colea = u.get_ptr(vtable - u.PTR_SIZE)
-                if potential_vtables <= 3:
-                    log_info(f"  COL address candidate: 0x{colea:x}")
-                
-                if u.within(colea, u.valid_ranges):
+                # Verify vtable address is within range and looks like a vtable
+                if vtable < end and rtti_parser._is_vtable(vtable):
+                    if potential_cols <= 3:  # Only log first 3 to avoid spam
+                        log_info(f"Found potential COL pointer 0x{colea:x} before vtable at 0x{vtable:x}")
+                    
+                    # Try to parse the COL structure
                     col = RTTICompleteObjectLocator(colea, vtable)
                     
-                    # Add COL to results if valid (like IDA)
+                    # Add COL to results if valid
                     if col.name is not None:
-                        log_info(f"Found valid RTTI class: {col.name} at vtable 0x{vtable:x}")
+                        log_info(f"Found valid RTTI class: {col.name} at COL 0x{colea:x}, vtable 0x{vtable:x}")
                         result[vtable] = col
-                else:
-                    if potential_vtables <= 3:
-                        log_info(f"  COL address 0x{colea:x} not in valid ranges")
+                        valid_rtti_found += 1
+                elif potential_cols <= 3:
+                    log_info(f"  COL pointer 0x{colea:x} not followed by valid vtable at 0x{vtable:x}")
         
-        log_info(f"Scanned {vtables_checked} addresses, found {potential_vtables} potential vtables")
+        log_info(f"Scanned {addresses_checked} addresses, found {potential_cols} potential COLs, {valid_rtti_found} valid RTTI structures")
         
         # Parse BCA for hierarchy like IDA version
         prev_col = None
