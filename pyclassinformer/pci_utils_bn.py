@@ -84,6 +84,13 @@ class utils(object):
             return struct.unpack('<I', data)[0]
         return 0
     
+    def get_signed_dword(self, addr):
+        """Read a 32-bit signed dword from memory"""
+        data = self.bv.read(addr, 4)
+        if data and len(data) >= 4:
+            return struct.unpack('<i', data)[0]
+        return 0
+    
     def get_qword(self, addr):
         """Read a 64-bit qword from memory"""
         data = self.bv.read(addr, 8)

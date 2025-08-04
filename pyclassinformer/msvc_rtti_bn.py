@@ -221,35 +221,60 @@ class RTTIBaseClassDescriptor(RTTIStruc):
         self.chdea = 0
         self.name = ""
         self.depth = 0
+        self.nb_cbs = 0
+        self.mdisp = 0
+        self.pdisp = 0
+        self.vdisp = 0
+        self.attributes = 0
         
+        # Validate memory before parsing
+        if not u.is_valid_addr(ea):
+            return
+            
         try:
+            # Read structure data first to determine size
+            data = u.bv.read(ea, 28)  # Max possible size
+            if not data or len(data) < 24:  # Minimum size
+                return
+            
             # Read structure exactly like IDA version
             self.tdea = u.get_dword(ea) + u.x64_imagebase()
             self.nb_cbs = u.get_dword(ea + 4)
-            self.mdisp = u.get_dword(ea + 8)
-            self.pdisp = u.get_dword(ea + 12)
-            self.vdisp = u.get_dword(ea + 16)
+            self.mdisp = u.get_signed_dword(ea + 8)
+            self.pdisp = u.get_signed_dword(ea + 12)
+            self.vdisp = u.get_signed_dword(ea + 16)
             self.attributes = u.get_dword(ea + 20)
             
             # Handle pClassDescriptor if present (like IDA)
             if self.attributes & self.BCD_HASPCHD:
-                self.chdea = u.get_dword(ea + 24) + u.x64_imagebase()
-                self.size = 28
+                if len(data) >= 28:  # Ensure we have enough data
+                    self.chdea = u.get_dword(ea + 24) + u.x64_imagebase()
+                    self.size = 28
+                else:
+                    # Inconsistent data - has flag but not enough bytes
+                    return
             else:
                 self.chdea = 0
                 self.size = 24
             
-            # Get type descriptor to extract name
-            if u.is_valid_addr(self.tdea):
-                td = RTTITypeDescriptor(self.tdea)
-                if td.class_name:
-                    self.name = strip(td.class_name)
+            # Validate TypeDescriptor address before accessing
+            if not u.is_valid_addr(self.tdea):
+                return
             
-            self._create_struct_type()
-            log_debug(f"Found BCD at 0x{ea:x}: {self.name}")
+            # Get type descriptor to extract name (like IDA)
+            td = RTTITypeDescriptor(self.tdea)
+            if td.class_name:
+                self.name = strip(td.class_name)
+                # Apply structure type after successful parsing
+                self._create_struct_type()
+                log_debug(f"Found BCD at 0x{ea:x}: {self.name}")
+            else:
+                # TypeDescriptor parsing failed - invalid BCD
+                return
             
         except Exception as e:
             log_debug(f"Failed to parse BCD at 0x{ea:x}: {e}")
+            return
     
     def _create_struct_type(self):
         """Create RTTIBaseClassDescriptor structure type"""
