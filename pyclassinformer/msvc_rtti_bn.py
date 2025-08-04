@@ -840,12 +840,8 @@ def get_vtbl_methods(target_ea):
     methods = []
     
     # Get the section containing this vtable
-    section = None
-    for section_name in u.bv.sections:
-        sect = u.bv.get_section_by_name(section_name)
-        if sect and sect.start <= target_ea < sect.end:
-            section = sect
-            break
+    sections = u.bv.get_sections_at(target_ea)
+    section = sections[0] if sections else None
     
     if not section:
         return methods
