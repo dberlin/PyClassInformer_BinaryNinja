@@ -97,89 +97,64 @@ class MCTreeBN:
 <head>
     <title>PyClassInformer Class Tree</title>
     <style>
-        /* Set dark mode as default with CSS variables */
-        :root {
-            --background-color: #2b2b2b;
-            --text-color: #e8e8e8;
-            --border-color: #666;
-            --primary-color: #5fb85f;
-            --secondary-color: #6db3f2;
-            --tertiary-color: #d2b48c;
-            --quaternary-color: #90ee90;
-            --container-background: #3a3a3a;
-            --lib-class-background: #5a5a00;
-            --user-class-background: #3a4a5a;
-            --section-background: #404040;
-            --accent-color: #66b3ff;
-            --hover-background: #3a4a5a;
-            --method-background: #383838;
-            --hierarchy-background: #384038;
-            --hierarchy-border: #4CAF50;
-            --muted-color: #bbb;
-            --summary-background: #3a4a5a;
-            --collapsible-background: #4a4a4a;
-            --collapsible-hover: #5a5a5a;
-            --content-background: #353535;
-            --vftable-background: #5a3a3a;
-        }
-        
+        /* Dark mode as default (direct colors for compatibility) */
         body { 
             font-family: Arial, sans-serif; 
             margin: 20px; 
-            background-color: var(--background-color);
-            color: var(--text-color);
+            background-color: #2b2b2b;
+            color: #e8e8e8;
         }
-        h1 { color: var(--primary-color); }
+        h1 { color: #5fb85f; }
         h2 { 
-            color: var(--secondary-color); 
-            border-bottom: 2px solid var(--border-color); 
+            color: #6db3f2; 
+            border-bottom: 2px solid #666; 
         }
         h3 { 
-            color: var(--tertiary-color); 
-            border-bottom: 1px solid var(--border-color); 
+            color: #d2b48c; 
+            border-bottom: 1px solid #666; 
         }
-        h4 { color: var(--quaternary-color); }
+        h4 { color: #90ee90; }
         .class-container { 
-            border: 1px solid var(--border-color); 
+            border: 1px solid #666; 
             margin: 10px 0; 
             padding: 15px; 
             border-radius: 5px; 
-            background-color: var(--container-background);
+            background-color: #3a3a3a;
         }
-        .library-class { background-color: var(--lib-class-background); }
-        .user-class { background-color: var(--user-class-background); }
+        .library-class { background-color: #5a5a00; }
+        .user-class { background-color: #3a4a5a; }
         .section { 
             margin: 10px 0; 
             padding: 10px; 
-            background-color: var(--section-background); 
+            background-color: #404040; 
             border-radius: 3px; 
         }
         .address { 
             font-family: monospace; 
-            color: var(--accent-color); 
+            color: #66b3ff; 
             cursor: pointer; 
         }
-        .address:hover { background-color: var(--hover-background); }
+        .address:hover { background-color: #3a4a5a; }
         .method-list { list-style-type: none; padding-left: 20px; }
         .method-item { 
             margin: 5px 0; 
             padding: 5px; 
-            background-color: var(--method-background); 
+            background-color: #383838; 
             border-radius: 3px; 
         }
         .hierarchy-path { 
             margin: 5px 0; 
             padding: 5px; 
-            background-color: var(--hierarchy-background); 
-            border-left: 3px solid var(--hierarchy-border); 
+            background-color: #384038; 
+            border-left: 3px solid #4CAF50; 
         }
         .inheritance-info { 
             font-size: 0.9em; 
-            color: var(--muted-color); 
+            color: #bbb; 
             font-style: italic; 
         }
         .summary { 
-            background-color: var(--summary-background); 
+            background-color: #3a4a5a; 
             padding: 15px; 
             border-radius: 5px; 
             margin: 10px 0; 
@@ -187,21 +162,21 @@ class MCTreeBN:
         .collapsible { 
             cursor: pointer; 
             padding: 10px; 
-            background-color: var(--collapsible-background); 
+            background-color: #4a4a4a; 
             border: none; 
             width: 100%; 
             text-align: left;
-            color: var(--text-color);
+            color: #e8e8e8;
         }
-        .collapsible:hover { background-color: var(--collapsible-hover); }
+        .collapsible:hover { background-color: #5a5a5a; }
         .content { 
             display: none; 
             padding: 10px; 
-            border: 1px solid var(--border-color); 
-            background-color: var(--content-background);
+            border: 1px solid #666; 
+            background-color: #353535;
         }
         .vftable-info { 
-            background-color: var(--vftable-background); 
+            background-color: #5a3a3a; 
             padding: 5px; 
             margin: 5px 0; 
             border-radius: 3px; 
@@ -209,29 +184,57 @@ class MCTreeBN:
         
         /* Light mode with softer backgrounds */
         @media (prefers-color-scheme: light) {
-            :root {
-                --background-color: #f8f8f8;
-                --text-color: #000000;
-                --border-color: #ccc;
-                --primary-color: #2E8B57;
-                --secondary-color: #4682B4;
-                --tertiary-color: #8B4513;
-                --quaternary-color: #2F4F4F;
-                --container-background: #fafafa;
-                --lib-class-background: #fff8e1;
-                --user-class-background: #f0f8ff;
-                --section-background: #f5f5f5;
-                --accent-color: #0066cc;
-                --hover-background: #e6f3ff;
-                --method-background: #f9f9f9;
-                --hierarchy-background: #f0fff0;
-                --hierarchy-border: #4CAF50;
-                --muted-color: #666;
-                --summary-background: #f0f8ff;
-                --collapsible-background: #f0f0f0;
-                --collapsible-hover: #e8e8e8;
-                --content-background: #fafafa;
-                --vftable-background: #fff5f5;
+            body { 
+                background-color: #f8f8f8;
+                color: #000000;
+            }
+            h1 { color: #2E8B57; }
+            h2 { 
+                color: #4682B4; 
+                border-bottom: 2px solid #ccc; 
+            }
+            h3 { 
+                color: #8B4513; 
+                border-bottom: 1px solid #ccc; 
+            }
+            h4 { color: #2F4F4F; }
+            .class-container { 
+                border: 1px solid #ccc; 
+                background-color: #fafafa;
+            }
+            .library-class { background-color: #fff8e1; }
+            .user-class { background-color: #f0f8ff; }
+            .section { 
+                background-color: #f5f5f5; 
+            }
+            .address { 
+                color: #0066cc; 
+            }
+            .address:hover { background-color: #e6f3ff; }
+            .method-item { 
+                background-color: #f9f9f9; 
+            }
+            .hierarchy-path { 
+                background-color: #f0fff0; 
+                border-left: 3px solid #4CAF50; 
+            }
+            .inheritance-info { 
+                color: #666; 
+            }
+            .summary { 
+                background-color: #f0f8ff; 
+            }
+            .collapsible { 
+                background-color: #f0f0f0; 
+                color: #000000;
+            }
+            .collapsible:hover { background-color: #e8e8e8; }
+            .content { 
+                border: 1px solid #ccc; 
+                background-color: #fafafa;
+            }
+            .vftable-info { 
+                background-color: #fff5f5; 
             }
         }
     </style>

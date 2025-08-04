@@ -320,12 +320,173 @@ class RTTIBaseClassArray(RTTIStruc):
         except:
             pass
     
+    def fix_offset(self, col_offs, curr_path, curr_off):
+        """Fix offset for multiple inheritance paths - from IDA version"""
+        # for MI with multiple vftables
+        if len(col_offs) > 1:
+            if curr_path and curr_path[-1].mdisp in col_offs:
+                return curr_path[-1].mdisp
+            return curr_off
+        # for other cases such as SI and MI with a single vftable
+        return sorted(col_offs)[0]
+    
+    def is_path_added(self, curr_path, offset, vi_offs, col):
+        """Check if path should be added - from IDA version"""
+        # if the offset has negative value, the path will not be added
+        if offset < 0:
+            return False
+        
+        # if the path does not have any VI classes, it will be added.
+        if len(vi_offs) == 0:
+            return True
+        
+        # if the path has a VI class and the path is for the current COL, the path will be added.
+        if col.offset in vi_offs:
+            # here, it needs to compare the names instead of instances
+            # because they are different on each vftable
+            if [x.name for x in vi_offs[col.offset]] == [x.name for x in curr_path]:
+                return True
+        return False
+    
+    def fix_offset_final(self, col_offs, curr_path, curr_off, vi_offs, col):
+        """Calculate final offset mainly for VI - from IDA version"""
+        # get first VI class
+        found = False
+        bcd = None
+        for bcd in curr_path:
+            if bcd.pdisp >= 0:
+                found = True
+                break
+            
+        # for SI and MI
+        if len(col_offs) <= 1 or not found:
+            return curr_off
+        
+        # for VI
+        if found:
+            found_col = False
+            # get current offset if the current col is already in vi_offs.
+            if col.offset in vi_offs:
+                curr_off = col.offset
+            # if the current col offset is not in vi_offs, the path is not processed yet.
+            else:
+                for p in vi_offs:
+                    # check vi_offs table to get the correct offset by comparing the current
+                    # path and paths in the vi_offs.
+                    # here, it needs to compare the names instead of instances because they
+                    # are different on each vftable
+                    if [x.name for x in vi_offs[p]] == [x.name for x in curr_path]:
+                        # sometimes, a class has two or more vftables, and a vfptr is at
+                        # its COL's offset but anther is not at COL's offsets because of VI.
+                        # E.g.
+                        # XXXXX::xxx (0,-1,0) -> XXXXX::yyy (0,4,4)
+                        # in this case, the current path is necessary on both vftables.
+                        # here, a path that is already added in the past will also be added
+                        # to another vftable that is not stored in vi_offs yet.
+                        if curr_off in col_offs and col.offset != curr_off:
+                            pass
+                        # otherwise, this path will be skipped adding the current vftable
+                        # because it is already processed.
+                        else:
+                            return -1
+                    else:
+                        # processing the path is the first time.
+                        # this path will be added on the current vftable.
+                        pass
+                
+                # update vi_offs if the offset is empty, processing the path is the first 
+                # time, or a special case (see above)
+                curr_off = col.offset
+                vi_offs[col.offset] = curr_path
+                found_col = True
+
+            if not found_col:
+                if curr_off not in vi_offs:
+                    log_warn(f"Warning: current offset {curr_off} was not found in vi_offs table {vi_offs}. This should be a virtual inheritance {[x.name for x in curr_path]}.")
+        else:
+            log_warn(f"Warning: current offset {curr_off} is not in COL's offset {col_offs}. This should be a virtual inheritance. But all pdisp values in the path has negative values. {[x.pdisp for x in curr_path]} {[x.name for x in curr_path]}")
+        return curr_off
+
     def parse_bca(self, col, col_offs, vi_offs):
-        """Parse BCA hierarchy - simplified version of IDA implementation"""
-        # This is a complex algorithm from IDA - implementing basic version
+        """Parse BCA hierarchy - full implementation from IDA version"""
+        ea = self.ea
+        nb_classes = self.nb_classes
+        
+        # Clear existing bases and rebuild them
+        self.bases = []
+        
+        # parse bca
+        for i in range(0, nb_classes):
+            bcdoff = ea + i*4
+            
+            # get relevant structures
+            bcdea = u.get_dword(bcdoff) + u.x64_imagebase()
+            if not u.is_valid_addr(bcdea):
+                continue
+                
+            bcd = RTTIBaseClassDescriptor(bcdea)
+            if not bcd.name:
+                continue
+                
+            # Add to bases list
+            self.bases.append(bcd)
+                
+        # parse hierarchy
+        result_paths = {}
+        curr_path = []
+        n_processed = {}
+        curr_off = 0
+        
         for i, bcd in enumerate(self.bases):
-            bcd.depth = i  # Simple depth assignment
-            yield bcd, i
+            n_processed[bcd.nb_cbs] = 0
+            
+            # add BCD to the current path
+            curr_path.append(bcd)
+            curr_depth = len(curr_path) - 1
+            
+            # update the offset for paths of base classes
+            curr_off = self.fix_offset(col_offs, curr_path, curr_off)
+        
+            # find a path to an offset for multiple inheritance
+            if bcd.nb_cbs == 0:
+                path = curr_path.copy()
+                
+                # get the final offset mainly for VI
+                offset = self.fix_offset_final(col_offs, path, curr_off, vi_offs, col)
+                
+                # append result according to the obtained offset
+                if self.is_path_added(path, offset, vi_offs, col):
+                    if offset in result_paths:
+                        result_paths[offset].append(path)
+                    else:
+                        result_paths[offset] = [path]
+                    
+                # rewind current result for next inheritance
+                while True:
+                    # compare the number of bases to be processed in the current path with the number processed so far.
+                    # if they are matched, the base class must have been processed. So remove it.
+                    if n_processed[curr_path[-1].nb_cbs] == curr_path[-1].nb_cbs:
+                        # pop the record of the last bcd from the n_processed. and pop the last bcd itself from the current path.
+                        del n_processed[curr_path[-1].nb_cbs]
+                        prev_bcd = curr_path.pop()
+                        
+                        # set the number processed so far to the new tail.
+                        if len(curr_path) > 0:
+                            n_processed[curr_path[-1].nb_cbs] += prev_bcd.nb_cbs + 1
+                            
+                    # quit the loop if finished, or no need to unwind for next bcd.
+                    if len(curr_path) == 0 or (len(curr_path) > 0 and n_processed[curr_path[-1].nb_cbs] != curr_path[-1].nb_cbs):
+                        break
+            
+            yield bcd, curr_depth
+            
+            # update the base class depth
+            self.bases[i].depth = curr_depth
+                        
+        self.paths = result_paths
+
+        if col.offset not in self.paths or not self.paths[col.offset]:
+            log_warn(f"Warning: Dispatching class hierarchy paths of the BCA at {ea:#x} for {self.bases[0].name if self.bases else 'unknown'} may be wrong because the paths list for the offset {col.offset} is empty. The paths will be misclassified as the wrong offset.")
 
 class RTTICompleteObjectLocator(RTTIStruc):
     """RTTI Complete Object Locator - identical to IDA version"""
@@ -524,9 +685,20 @@ class rtti_parser(object):
     
     @staticmethod 
     def _get_col_offs(col, result):
-        """Get COL offsets - simplified version of IDA functionality"""
-        # This would be complex to implement fully - return basic result
-        return [col.offset] if col else []
+        """Get COL offsets - Binary Ninja implementation of IDA functionality"""
+        if not col:
+            return []
+        
+        # Get COLs that share the same TD and CHD (multiple inheritance detection)
+        cols = []
+        for vtable in result:
+            other_col = result[vtable]
+            if (other_col.tdea == col.tdea and other_col.chdea == col.chdea):
+                cols.append(other_col)
+        
+        # Get the offsets from all related COLs
+        col_offs = [c.offset for c in cols]
+        return sorted(col_offs)
     
     @staticmethod
     def is_binary_allowed(bv):
